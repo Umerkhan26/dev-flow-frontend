@@ -16,6 +16,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     method: options.method ?? (options.body ? "POST" : "GET"),
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined,
+    cache: "no-store",
   });
 
   if (res.status === 204) return undefined as T;

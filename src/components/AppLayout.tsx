@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { fetchWorkspaces, logout, setActiveWorkspace } from "../app/store/authSlice";
 import { useAppDispatch, useAppSelector } from "../hooks/redux";
 
@@ -39,10 +39,39 @@ function IconIssues() {
   );
 }
 
+function IconCycles() {
+  return (
+    <svg {...iconProps}>
+      <path d="M20 12a8 8 0 1 1-2.2-5.5" strokeLinecap="round" />
+      <path d="M20 4v5h-5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconRepos() {
+  return (
+    <svg {...iconProps}>
+      <path d="M7 4h8.5A2.5 2.5 0 0 1 18 6.5V19l-3-1.5L12 19l-3-1.5L6 19V6.5A2.5 2.5 0 0 1 8.5 4" />
+      <path d="M9 8h6M9 11h6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconPr() {
+  return (
+    <svg {...iconProps}>
+      <circle cx="7" cy="6" r="2.2" />
+      <circle cx="7" cy="18" r="2.2" />
+      <circle cx="17" cy="18" r="2.2" />
+      <path d="M7 8.2v7.6M17 15.8V10a3 3 0 0 0-3-3h-2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function AppLayout() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { user, workspaces, activeWorkspaceId } = useAppSelector((s) => s.auth);
+  const { user, workspaces, activeWorkspaceId, status, error } = useAppSelector((s) => s.auth);
   const active = workspaces.find((w) => w.id === activeWorkspaceId) ?? workspaces[0];
   const initials = (user?.name ?? "U")
     .split(" ")
@@ -55,47 +84,70 @@ export function AppLayout() {
     void dispatch(fetchWorkspaces());
   }, [dispatch]);
 
+  const workspaceLabel =
+    status === "loading" && workspaces.length === 0
+      ? "Loading…"
+      : active?.name ?? (status === "failed" ? "Failed to load" : "No workspace");
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="sidebar-brand">
-          <div className="brand-mark">
-            <span className="logo">DF</span>
-            <span className="brand">DevFlow AI</span>
+        <div className="sidebar-top">
+          <div className="sidebar-brand">
+            <div className="brand-mark">
+              <span className="logo">DF</span>
+              <span className="brand">DevFlow AI</span>
+            </div>
+            <p className="product-tag">Engineering workspace</p>
           </div>
-        </div>
 
-        <div className="workspace-inline">
-          <div className="label">Workspace</div>
-          {workspaces.length > 1 ? (
-            <select
-              className="workspace-select"
-              value={active?.id}
-              onChange={(e) => dispatch(setActiveWorkspace(e.target.value))}
+          <div className="workspace-inline">
+            <div className="label">Workspace</div>
+            {workspaces.length > 1 ? (
+              <select
+                className="workspace-select"
+                value={active?.id}
+                onChange={(e) => dispatch(setActiveWorkspace(e.target.value))}
+              >
+                {workspaces.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="workspace-name">{workspaceLabel}</p>
+            )}
+            {active ? (
+              <div className="workspace-meta">
+                <span className="badge badge-owner">{active.role}</span>
+                <span className="badge badge-live">Active</span>
+              </div>
+            ) : null}
+            {workspaces.length === 0 && status !== "loading" ? (
+              <Link className="workspace-cta" to="/onboarding">
+                Create workspace →
+              </Link>
+            ) : null}
+            {error && status === "failed" ? <p className="workspace-error">{error}</p> : null}
+          </div>
+
+          <nav className="sidebar-nav">
+            <NavLink
+              className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+              to="/app"
+              end
             >
-              {workspaces.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <p className="workspace-name">{active?.name ?? "Loading…"}</p>
-          )}
-        </div>
-
-        <nav>
-          <NavLink className={({ isActive }) => `nav-item${isActive ? " active" : ""}`} to="/app" end>
-            <IconOverview />
-            Overview
-          </NavLink>
-          <NavLink
-            className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
-            to="/app/projects"
-          >
-            <IconProjects />
-            Projects
-          </NavLink>
+              <IconOverview />
+              Overview
+            </NavLink>
+            <NavLink
+              className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+              to="/app/projects"
+            >
+              <IconProjects />
+              Projects
+            </NavLink>
           <NavLink
             className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
             to="/app/issues"
@@ -103,10 +155,47 @@ export function AppLayout() {
             <IconIssues />
             Issues
           </NavLink>
-          <div className="nav-divider" />
-          <span className="nav-item soon">Cycles</span>
-          <span className="nav-item soon">Repos · PRs · AI</span>
-        </nav>
+          <NavLink
+            className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+            to="/app/cycles"
+          >
+            <IconCycles />
+            Cycles
+          </NavLink>
+          <NavLink
+            className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+            to="/app/repositories"
+          >
+            <IconRepos />
+            Repositories
+          </NavLink>
+          <NavLink
+            className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+            to="/app/pull-requests"
+          >
+            <IconPr />
+            Pull requests
+          </NavLink>
+          </nav>
+
+          <div className="sidebar-block">
+            <h4>Roadmap</h4>
+            <div className="roadmap-list">
+              <div className="roadmap-item">
+                <span>AI summaries</span>
+                <span>Next</span>
+              </div>
+              <div className="roadmap-item">
+                <span>Realtime</span>
+                <span>Soon</span>
+              </div>
+              <div className="roadmap-item">
+                <span>Analytics</span>
+                <span>Soon</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div className="sidebar-footer">
           <div className="user-chip">

@@ -3,15 +3,18 @@ import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { Modal } from "../components/Modal";
 import { apiRequest } from "../lib/api";
 import { useAppSelector } from "../hooks/redux";
-import type { Project } from "../types/engineering";
+import type { Issue, Project } from "../types/engineering";
 
 type OutletCtx = { workspaceId?: string };
 
 export function ProjectsPage() {
-  const { workspaceId } = useOutletContext<OutletCtx>() ?? {};
+  const ctx = useOutletContext<OutletCtx>() ?? {};
   const token = useAppSelector((s) => s.auth.accessToken);
+  const activeWorkspaceId = useAppSelector((s) => s.auth.activeWorkspaceId);
+  const workspaceId = ctx.workspaceId ?? activeWorkspaceId ?? undefined;
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -21,15 +24,25 @@ export function ProjectsPage() {
   const [creating, setCreating] = useState(false);
 
   async function load() {
-    if (!workspaceId || !token) return;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    if (!workspaceId) {
+      setProjects([]);
+      setIssues([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const data = await apiRequest<{ projects: Project[] }>(
-        `/api/workspaces/${workspaceId}/projects`,
-        { token },
-      );
-      setProjects(data.projects);
+      const [p, i] = await Promise.all([
+        apiRequest<{ projects: Project[] }>(`/api/workspaces/${workspaceId}/projects`, { token }),
+        apiRequest<{ issues: Issue[] }>(`/api/workspaces/${workspaceId}/issues`, { token }),
+      ]);
+      setProjects(p.projects ?? []);
+      setIssues(i.issues ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load projects");
     } finally {
@@ -79,27 +92,42 @@ export function ProjectsPage() {
         </button>
       </header>
 
-      <section className="panel">
-        {loading ? <p className="muted">Loading…</p> : null}
-        {error && !open ? <p className="error">{error}</p> : null}
-        {!loading && projects.length === 0 ? (
+      {loading ? <p className="muted">Loading projects…</p> : null}
+      {error && !open ? <p className="error">{error}</p> : null}
+
+      {!loading && projects.length === 0 ? (
+        <section className="panel">
           <p className="muted">No projects yet. Create one to start tracking issues.</p>
-        ) : null}
-        <ul className="data-list">
-          {projects.map((p) => (
-            <li key={p.id}>
-              <Link to={`/app/projects/${p.id}`} className="data-row">
-                <span className="mono pill">{p.key}</span>
-                <span className="grow">
-                  <strong>{p.name}</strong>
-                  {p.description ? <span className="muted block">{p.description}</span> : null}
-                </span>
-                <span className="muted">{p.issueCount ?? 0} issues</span>
+        </section>
+      ) : (
+        <div className="projects-grid">
+          {projects.map((p) => {
+            const related = issues.filter((i) => i.projectId === p.id);
+            const done = related.filter((i) => i.status === "DONE").length;
+            const active = related.filter((i) => i.status === "IN_PROGRESS").length;
+            const pct = related.length ? Math.round((done / related.length) * 100) : 0;
+            return (
+              <Link key={p.id} to={`/app/projects/${p.id}`} className="project-card">
+                <div className="project-card-top">
+                  <span className="mono pill">{p.key}</span>
+                  <span className="muted small">{related.length || p.issueCount || 0} issues</span>
+                </div>
+                <div>
+                  <h3>{p.name}</h3>
+                  <p>{p.description || "No description yet"}</p>
+                </div>
+                <div className="progress-line">
+                  <i style={{ width: `${pct}%` }} />
+                </div>
+                <div className="project-card-top">
+                  <span className="muted small">{pct}% complete</span>
+                  <span className="muted small">{active} active</span>
+                </div>
               </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
+            );
+          })}
+        </div>
+      )}
 
       <Modal
         open={open}

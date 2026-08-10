@@ -140,12 +140,23 @@ const authSlice = createSlice({
       .addCase(login.pending, authPending)
       .addCase(login.fulfilled, authFulfilled)
       .addCase(login.rejected, authRejected)
+      .addCase(fetchWorkspaces.pending, (state) => {
+        state.status = "loading";
+      })
       .addCase(fetchWorkspaces.fulfilled, (state, action) => {
-        state.workspaces = action.payload.workspaces;
-        if (!state.activeWorkspaceId && action.payload.workspaces[0]) {
-          state.activeWorkspaceId = action.payload.workspaces[0].id;
+        state.status = "succeeded";
+        const list = action.payload.workspaces ?? [];
+        state.workspaces = list;
+        const stillValid = list.some((w) => w.id === state.activeWorkspaceId);
+        if (!stillValid) {
+          state.activeWorkspaceId = list[0]?.id ?? null;
           persist(state);
         }
+      })
+      .addCase(fetchWorkspaces.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.error.message ?? "Could not load workspaces";
+        state.workspaces = [];
       })
       .addCase(createWorkspace.fulfilled, (state, action) => {
         state.workspaces.push(action.payload.workspace);

@@ -13,8 +13,10 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const { user, workspaces } = useAppSelector((s) => s.auth);
   const ctx = useOutletContext<OutletCtx>() ?? {};
-  const { workspaceId, workspace } = ctx;
   const token = useAppSelector((s) => s.auth.accessToken);
+  const activeWorkspaceId = useAppSelector((s) => s.auth.activeWorkspaceId);
+  const workspaceId = ctx.workspaceId ?? activeWorkspaceId ?? undefined;
+  const { workspace } = ctx;
   const [projects, setProjects] = useState<Project[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [projectOpen, setProjectOpen] = useState(false);
@@ -35,8 +37,8 @@ export function DashboardPage() {
           apiRequest<{ projects: Project[] }>(`/api/workspaces/${workspaceId}/projects`, { token }),
           apiRequest<{ issues: Issue[] }>(`/api/workspaces/${workspaceId}/issues`, { token }),
         ]);
-        setProjects(p.projects);
-        setIssues(i.issues);
+        setProjects(p.projects ?? []);
+        setIssues(i.issues ?? []);
       } catch {
         // empty dashboard is fine
       }
@@ -45,10 +47,28 @@ export function DashboardPage() {
   }, [workspaceId, token]);
 
   const stats = useMemo(() => {
-    const open = issues.filter((i) => !["DONE", "CANCELLED"].includes(i.status)).length;
+    const backlog = issues.filter((i) => i.status === "BACKLOG" || i.status === "TODO").length;
     const inProgress = issues.filter((i) => i.status === "IN_PROGRESS").length;
+    const review = issues.filter((i) => i.status === "IN_REVIEW").length;
     const done = issues.filter((i) => i.status === "DONE").length;
-    return { open, inProgress, done, total: issues.length };
+    const open = issues.filter((i) => !["DONE", "CANCELLED"].includes(i.status)).length;
+    const high = issues.filter((i) => i.priority === "HIGH" || i.priority === "URGENT").length;
+    const total = Math.max(issues.length, 1);
+    return {
+      backlog,
+      inProgress,
+      review,
+      done,
+      open,
+      high,
+      totalIssues: issues.length,
+      pct: {
+        backlog: (backlog / total) * 100,
+        inProgress: (inProgress / total) * 100,
+        review: (review / total) * 100,
+        done: (done / total) * 100,
+      },
+    };
   }, [issues]);
 
   async function onCreateProject(e: FormEvent) {
@@ -84,16 +104,16 @@ export function DashboardPage() {
     );
   }
 
-  const recent = issues.slice(0, 7);
+  const recent = issues.slice(0, 6);
 
   return (
     <div>
       <header className="topbar">
         <div>
-          <p className="eyebrow">Overview</p>
+          <p className="eyebrow">Command center</p>
           <h1>{workspace?.name ?? "Dashboard"}</h1>
         </div>
-        <div style={{ display: "flex", gap: "0.4rem" }}>
+        <div className="topbar-actions">
           <Link className="button-link ghost-link" to="/app/issues">
             All issues
           </Link>
@@ -103,33 +123,67 @@ export function DashboardPage() {
         </div>
       </header>
 
-      <section className="dash-hero">
-        <article className="dash-hero-main">
-          <h2>Hi {user?.name?.split(" ")[0]}, keep delivery moving</h2>
-          <p className="muted">
-            Track projects and issues in one workspace. GitHub sync and AI summaries come next.
+      <section className="dash-grid">
+        <article className="hero-card">
+          <h2>Hi {user?.name?.split(" ")[0]}, ship with clarity</h2>
+          <p>
+            One workspace for projects, issues, and delivery signals. GitHub sync and AI summaries
+            plug in next.
           </p>
-          <div className="dash-actions">
+          <div className="hero-actions">
             <button type="button" onClick={() => setProjectOpen(true)}>
               Create project
             </button>
-            <Link className="button-link ghost-link" to="/app/projects">
+            <Link className="button-link ghost-link" to="/app/projects" style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.18)", color: "#fff" }}>
               Browse projects
             </Link>
           </div>
-        </article>
-        <div className="dash-side">
-          <article className="mini-card">
-            <div className="k">Role</div>
-            <div className="v" style={{ fontSize: "0.95rem" }}>
-              {workspace?.role ?? "—"}
+          <div className="hero-metrics">
+            <div className="hero-metric">
+              <div className="k">Projects</div>
+              <div className="v">{projects.length}</div>
             </div>
-            <div className="h">Workspace permission</div>
+            <div className="hero-metric">
+              <div className="k">Open work</div>
+              <div className="v">{stats.open}</div>
+            </div>
+            <div className="hero-metric">
+              <div className="k">High priority</div>
+              <div className="v">{stats.high}</div>
+            </div>
+          </div>
+        </article>
+
+        <div className="side-stack">
+          <article className="insight-card">
+            <div className="k">Your role</div>
+            <div className="v">{workspace?.role ?? "—"}</div>
+            <div className="h">Controls what you can change in this tenant</div>
           </article>
-          <article className="mini-card">
-            <div className="k">Focus</div>
-            <div className="v">{stats.inProgress}</div>
-            <div className="h">Issues in progress</div>
+          <article className="insight-card">
+            <div className="k">Delivery pipeline</div>
+            <div className="pipeline">
+              <div className="pipeline-row">
+                <span>Todo</span>
+                <div className="bar"><i style={{ width: `${stats.pct.backlog}%` }} /></div>
+                <span>{stats.backlog}</span>
+              </div>
+              <div className="pipeline-row">
+                <span>Active</span>
+                <div className="bar sky"><i style={{ width: `${stats.pct.inProgress}%` }} /></div>
+                <span>{stats.inProgress}</span>
+              </div>
+              <div className="pipeline-row">
+                <span>Review</span>
+                <div className="bar sky"><i style={{ width: `${stats.pct.review}%` }} /></div>
+                <span>{stats.review}</span>
+              </div>
+              <div className="pipeline-row">
+                <span>Done</span>
+                <div className="bar ok"><i style={{ width: `${stats.pct.done}%` }} /></div>
+                <span>{stats.done}</span>
+              </div>
+            </div>
           </article>
         </div>
       </section>
@@ -138,12 +192,12 @@ export function DashboardPage() {
         <article className="stat-card">
           <div className="stat-label">Projects</div>
           <div className="stat-value">{projects.length}</div>
-          <div className="stat-hint">In workspace</div>
+          <div className="stat-hint">Active product areas</div>
         </article>
         <article className="stat-card">
-          <div className="stat-label">Open</div>
+          <div className="stat-label">Open issues</div>
           <div className="stat-value">{stats.open}</div>
-          <div className="stat-hint">Active issues</div>
+          <div className="stat-hint">Not done / cancelled</div>
         </article>
         <article className="stat-card">
           <div className="stat-label">In progress</div>
@@ -151,9 +205,9 @@ export function DashboardPage() {
           <div className="stat-hint">Currently moving</div>
         </article>
         <article className="stat-card">
-          <div className="stat-label">Done</div>
+          <div className="stat-label">Completed</div>
           <div className="stat-value">{stats.done}</div>
-          <div className="stat-hint">Completed</div>
+          <div className="stat-hint">Closed as done</div>
         </article>
       </section>
 
@@ -164,49 +218,79 @@ export function DashboardPage() {
             <Link to="/app/projects">View all</Link>
           </div>
           {projects.length === 0 ? (
-            <p className="muted">No projects yet.</p>
+            <p className="muted">No projects yet — create your first product area.</p>
           ) : (
-            <ul className="data-list">
-              {projects.slice(0, 6).map((p) => (
-                <li key={p.id}>
-                  <Link to={`/app/projects/${p.id}`} className="data-row">
-                    <span className="mono pill">{p.key}</span>
-                    <span className="grow">
-                      <strong>{p.name}</strong>
-                    </span>
-                    <span className="muted">{p.issueCount ?? 0}</span>
+            <div className="projects-grid">
+              {projects.slice(0, 4).map((p) => {
+                const related = issues.filter((i) => i.projectId === p.id);
+                const done = related.filter((i) => i.status === "DONE").length;
+                const pct = related.length ? Math.round((done / related.length) * 100) : 0;
+                return (
+                  <Link key={p.id} to={`/app/projects/${p.id}`} className="project-card">
+                    <div className="project-card-top">
+                      <span className="mono pill">{p.key}</span>
+                      <span className="muted small">{related.length || p.issueCount || 0} issues</span>
+                    </div>
+                    <div>
+                      <h3>{p.name}</h3>
+                      <p>{p.description || "No description"}</p>
+                    </div>
+                    <div className="progress-line">
+                      <i style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="muted small">{pct}% done</span>
                   </Link>
-                </li>
-              ))}
-            </ul>
+                );
+              })}
+            </div>
           )}
         </article>
+
         <article className="panel">
           <div className="panel-head">
-            <h3>Recent issues</h3>
-            <Link to="/app/issues">View all</Link>
+            <h3>Recent activity</h3>
+            <Link to="/app/issues">Issues</Link>
           </div>
           {recent.length === 0 ? (
-            <p className="muted">No issues yet.</p>
+            <p className="muted">Issue updates will appear here.</p>
           ) : (
-            <ul className="data-list">
-              {recent.map((issue) => (
-                <li key={issue.id}>
-                  <Link to={`/app/issues/${issue.id}`} className="data-row">
-                    <span className="mono muted">
-                      {formatIssueKey(issue.project?.key ?? "PRJ", issue.number)}
-                    </span>
-                    <span className="grow">
-                      <strong>{issue.title}</strong>
-                    </span>
-                    <span className={`status status-${issue.status.toLowerCase()}`}>
-                      {statusLabel(issue.status)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            recent.map((issue) => (
+              <Link key={issue.id} to={`/app/issues/${issue.id}`} className="activity-item" style={{ color: "inherit", textDecoration: "none" }}>
+                <span
+                  className={`dot${issue.status === "DONE" ? " ok" : issue.status === "IN_PROGRESS" ? " sky" : ""}`}
+                />
+                <div>
+                  <strong>
+                    {formatIssueKey(issue.project?.key ?? "PRJ", issue.number)} · {issue.title}
+                  </strong>
+                  <span>
+                    {statusLabel(issue.status)}
+                    {issue.assignee ? ` · ${issue.assignee.name}` : " · Unassigned"}
+                    {" · "}
+                    {issue.project?.name}
+                  </span>
+                </div>
+              </Link>
+            ))
           )}
+        </article>
+      </section>
+
+      <section className="grid-three">
+        <Link to="/app/cycles" className="module-card" style={{ color: "inherit", textDecoration: "none" }}>
+          <h3>Cycles</h3>
+          <p>Time-box work into sprints and track progress on a board.</p>
+          <span className="tag">Open cycles</span>
+        </Link>
+        <Link to="/app/repositories" className="module-card" style={{ color: "inherit", textDecoration: "none" }}>
+          <h3>GitHub</h3>
+          <p>Connect repos, sync pull requests, and link them to issues.</p>
+          <span className="tag">Repositories</span>
+        </Link>
+        <article className="module-card">
+          <h3>AI assistant</h3>
+          <p>Summarize issues, PRs, and cycles using real workspace context.</p>
+          <span className="tag">Next slice</span>
         </article>
       </section>
 

@@ -1,6 +1,8 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { ProtectedRoute, PublicOnlyRoute } from "./components/ProtectedRoute";
+import { CycleDetailPage } from "./pages/CycleDetailPage";
+import { CyclesPage } from "./pages/CyclesPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { IssueDetailPage } from "./pages/IssueDetailPage";
 import { IssuesPage } from "./pages/IssuesPage";
@@ -8,7 +10,10 @@ import { LoginPage } from "./pages/LoginPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
+import { PullRequestDetailPage } from "./pages/PullRequestDetailPage";
+import { PullRequestsPage } from "./pages/PullRequestsPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { RepositoriesPage } from "./pages/RepositoriesPage";
 
 export default function App() {
   return (
@@ -24,8 +29,13 @@ export default function App() {
             <Route index element={<DashboardPage />} />
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="projects/:projectId" element={<ProjectDetailPage />} />
+            <Route path="cycles" element={<CyclesPage />} />
+            <Route path="cycles/:cycleId" element={<CycleDetailPage />} />
             <Route path="issues" element={<IssuesPage />} />
             <Route path="issues/:issueId" element={<IssueDetailPage />} />
+            <Route path="repositories" element={<RepositoriesPage />} />
+            <Route path="pull-requests" element={<PullRequestsPage />} />
+            <Route path="pull-requests/:pullRequestId" element={<PullRequestDetailPage />} />
           </Route>
         </Route>
         <Route path="/" element={<Navigate to="/app" replace />} />
