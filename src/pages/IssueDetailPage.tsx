@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
+import { AiPanel } from "../components/AiPanel";
 import { useAppSelector } from "../hooks/redux";
 import { apiRequest } from "../lib/api";
 import {
@@ -164,69 +165,76 @@ export function IssueDetailPage() {
           </form>
         </section>
 
-        <section className="panel">
-          <h2>Details</h2>
-          <div className="stack">
-            <label>
-              Status
-              <select
-                value={issue.status}
-                disabled={saving}
-                onChange={(e) => void patchIssue({ status: e.target.value })}
-              >
-                {ISSUE_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {statusLabel(s)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Priority
-              <select
-                value={issue.priority}
-                disabled={saving}
-                onChange={(e) => void patchIssue({ priority: e.target.value })}
-              >
-                {ISSUE_PRIORITIES.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            </label>
+        <div className="stack">
+          <AiPanel
+            title="AI summary"
+            summarizePath={`/api/ai/summarize/issues/${issue.id}`}
+            askHint="Summarize status, discussion, and linked PRs."
+          />
+          <section className="panel">
+            <h2>Details</h2>
+            <div className="stack">
+              <label>
+                Status
+                <select
+                  value={issue.status}
+                  disabled={saving}
+                  onChange={(e) => void patchIssue({ status: e.target.value })}
+                >
+                  {ISSUE_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {statusLabel(s)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Priority
+                <select
+                  value={issue.priority}
+                  disabled={saving}
+                  onChange={(e) => void patchIssue({ priority: e.target.value })}
+                >
+                  {ISSUE_PRIORITIES.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-            <div>
-              <p className="muted small">Labels</p>
-              <div className="label-row">
-                {labels.map((label) => {
-                  const active = issue.labels.some((l) => l.id === label.id);
-                  return (
-                    <button
-                      key={label.id}
-                      type="button"
-                      className={`label-chip${active ? " active" : ""}`}
-                      style={{ ["--label-color" as string]: label.color }}
-                      onClick={() => toggleLabel(label.id)}
-                    >
-                      {label.name}
-                    </button>
-                  );
-                })}
+              <div>
+                <p className="muted small">Labels</p>
+                <div className="label-row">
+                  {labels.map((label) => {
+                    const active = issue.labels.some((l) => l.id === label.id);
+                    return (
+                      <button
+                        key={label.id}
+                        type="button"
+                        className={`label-chip${active ? " active" : ""}`}
+                        style={{ ["--label-color" as string]: label.color }}
+                        onClick={() => toggleLabel(label.id)}
+                      >
+                        {label.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <form className="form-row tight" onSubmit={onCreateLabel}>
+                  <input
+                    value={newLabelName}
+                    onChange={(e) => setNewLabelName(e.target.value)}
+                    placeholder="New label"
+                  />
+                  <button type="submit" className="ghost">
+                    Add
+                  </button>
+                </form>
               </div>
-              <form className="form-row tight" onSubmit={onCreateLabel}>
-                <input
-                  value={newLabelName}
-                  onChange={(e) => setNewLabelName(e.target.value)}
-                  placeholder="New label"
-                />
-                <button type="submit" className="ghost">
-                  Add
-                </button>
-              </form>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
     </div>
   );

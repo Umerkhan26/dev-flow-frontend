@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
+import { AiPanel } from "../components/AiPanel";
 import { Modal } from "../components/Modal";
 import { useAppSelector } from "../hooks/redux";
 import { apiRequest } from "../lib/api";
@@ -170,6 +171,14 @@ export function CycleDetailPage() {
           {cycle.progress}% complete
         </p>
       </section>
+
+      <div style={{ marginBottom: "0.75rem" }}>
+        <AiPanel
+          title="AI cycle summary"
+          summarizePath={`/api/ai/summarize/cycles/${cycle.id}`}
+          askHint="Delivery health, blockers, and what to focus on next."
+        />
+      </div>
 
       <div className="board">
         {BOARD_COLUMNS.map((column) => (

@@ -68,6 +68,16 @@ function IconPr() {
   );
 }
 
+function IconAi() {
+  return (
+    <svg {...iconProps}>
+      <path d="M12 3v3M12 18v3M3 12h3M18 12h3" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="4.5" />
+      <path d="M8.5 8.5 6 6M15.5 8.5 18 6M8.5 15.5 6 18M15.5 15.5 18 18" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function AppLayout() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -176,6 +186,13 @@ export function AppLayout() {
             <IconPr />
             Pull requests
           </NavLink>
+          <NavLink
+            className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+            to="/app/ai"
+          >
+            <IconAi />
+            AI assistant
+          </NavLink>
           </nav>
 
           <div className="sidebar-block">
@@ -183,7 +200,7 @@ export function AppLayout() {
             <div className="roadmap-list">
               <div className="roadmap-item">
                 <span>AI summaries</span>
-                <span>Next</span>
+                <span>Live</span>
               </div>
               <div className="roadmap-item">
                 <span>Realtime</span>

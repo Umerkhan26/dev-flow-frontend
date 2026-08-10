@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { ProtectedRoute, PublicOnlyRoute } from "./components/ProtectedRoute";
+import { AiAskPage } from "./pages/AiAskPage";
 import { CycleDetailPage } from "./pages/CycleDetailPage";
 import { CyclesPage } from "./pages/CyclesPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="repositories" element={<RepositoriesPage />} />
             <Route path="pull-requests" element={<PullRequestsPage />} />
             <Route path="pull-requests/:pullRequestId" element={<PullRequestDetailPage />} />
+            <Route path="ai" element={<AiAskPage />} />
           </Route>
         </Route>
         <Route path="/" element={<Navigate to="/app" replace />} />

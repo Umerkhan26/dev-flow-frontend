@@ -698,6 +698,41 @@ textarea { resize: vertical; min-height: 72px; }
 .modal-head h2 { font-size: 0.95rem; }
 .modal-body .stack { margin-top: 0.65rem; }
 
+.ai-panel .ai-output {
+  margin-top: 0.55rem;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--ink);
+}
+.ai-panel .ai-output h3 {
+  font-size: 0.92rem;
+  margin: 0.55rem 0 0.25rem;
+}
+.ai-panel .ai-output h4 {
+  font-size: 0.82rem;
+  margin: 0.45rem 0 0.2rem;
+  color: var(--muted);
+}
+.ai-panel .ai-output p { margin: 0.15rem 0; }
+.ai-panel .ai-output li {
+  margin-left: 1rem;
+  list-style: disc;
+}
+.ai-panel .ai-output code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  background: var(--surface-2);
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+}
+.ai-provider { margin-top: 0.35rem; }
+.ai-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+
 @keyframes rise {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }

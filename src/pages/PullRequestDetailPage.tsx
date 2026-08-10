@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { AiPanel } from "../components/AiPanel";
 import { useAppSelector } from "../hooks/redux";
 import { apiRequest } from "../lib/api";
 
@@ -114,37 +115,44 @@ export function PullRequestDetailPage() {
             {pr.body || "No description."}
           </p>
         </section>
-        <section className="panel">
-          <h2>Details</h2>
-          <div className="stack">
-            <p className="muted small">
-              Repo: <a href={pr.repository.htmlUrl}>{pr.repository.fullName}</a>
-            </p>
-            <p className="muted small">
-              Updated:{" "}
-              {pr.githubUpdatedAt ? new Date(pr.githubUpdatedAt).toLocaleString() : "—"}
-            </p>
-            <label>
-              Linked issue
-              <select
-                value={pr.issue?.id ?? ""}
-                disabled={saving}
-                onChange={(e) => void linkIssue(e.target.value)}
-              >
-                <option value="">None</option>
-                {issues.map((issue) => (
-                  <option key={issue.id} value={issue.id}>
-                    {issue.project?.key ? `${issue.project.key}-` : "#"}
-                    {issue.number} {issue.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {pr.issue ? (
-              <Link to={`/app/issues/${pr.issue.id}`}>Open issue #{pr.issue.number}</Link>
-            ) : null}
-          </div>
-        </section>
+        <div className="stack">
+          <AiPanel
+            title="AI summary"
+            summarizePath={`/api/ai/summarize/pull-requests/${pr.id}`}
+            askHint="What does this PR change? Review focus + linked issue."
+          />
+          <section className="panel">
+            <h2>Details</h2>
+            <div className="stack">
+              <p className="muted small">
+                Repo: <a href={pr.repository.htmlUrl}>{pr.repository.fullName}</a>
+              </p>
+              <p className="muted small">
+                Updated:{" "}
+                {pr.githubUpdatedAt ? new Date(pr.githubUpdatedAt).toLocaleString() : "—"}
+              </p>
+              <label>
+                Linked issue
+                <select
+                  value={pr.issue?.id ?? ""}
+                  disabled={saving}
+                  onChange={(e) => void linkIssue(e.target.value)}
+                >
+                  <option value="">None</option>
+                  {issues.map((issue) => (
+                    <option key={issue.id} value={issue.id}>
+                      {issue.project?.key ? `${issue.project.key}-` : "#"}
+                      {issue.number} {issue.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {pr.issue ? (
+                <Link to={`/app/issues/${pr.issue.id}`}>Open issue #{pr.issue.number}</Link>
+              ) : null}
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );
