@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { fetchWorkspaces, logout, setActiveWorkspace } from "../app/store/authSlice";
 import { ToastStack, useToasts } from "./ToastStack";
 import { useAppDispatch, useAppSelector } from "../hooks/redux";
@@ -193,10 +193,12 @@ function NavGroup({
   title,
   items,
   counts,
+  onNavigate,
 }: {
   title: string;
   items: NavItem[];
   counts: NavCounts | null;
+  onNavigate?: () => void;
 }) {
   return (
     <div className="nav-group">
@@ -207,6 +209,7 @@ function NavGroup({
             key={item.to}
             end={item.end}
             to={item.to}
+            onClick={onNavigate}
             className={({ isActive }) =>
               `nav-item${isActive ? " active" : ""}${item.accent ? " nav-accent" : ""}`
             }
@@ -231,12 +234,14 @@ function NavGroup({
 export function AppLayout() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, workspaces, activeWorkspaceId, status, error, accessToken } = useAppSelector(
     (s) => s.auth,
   );
   const active = workspaces.find((w) => w.id === activeWorkspaceId) ?? workspaces[0];
   const [counts, setCounts] = useState<NavCounts | null>(null);
   const [unread, setUnread] = useState(0);
+  const [navOpen, setNavOpen] = useState(false);
   const { toasts, pushToast, dismiss } = useToasts();
   const initials = (user?.name ?? "U")
     .split(" ")
@@ -244,6 +249,29 @@ export function AppLayout() {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  const closeNav = () => setNavOpen(false);
+
+  useEffect(() => {
+    closeNav();
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!navOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [navOpen]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeNav();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     void dispatch(fetchWorkspaces());
@@ -355,8 +383,16 @@ export function AppLayout() {
       : active?.name ?? (status === "failed" ? "Failed to load" : "No workspace");
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div className={`app-shell${navOpen ? " nav-open" : ""}`}>
+      <button
+        type="button"
+        className="sidebar-backdrop"
+        aria-label="Close menu"
+        tabIndex={navOpen ? 0 : -1}
+        onClick={closeNav}
+      />
+
+      <aside className="sidebar" id="app-sidebar">
         <div className="sidebar-scroll">
           <div className="sidebar-brand">
             <div className="brand-mark">
@@ -366,6 +402,14 @@ export function AppLayout() {
                 <p className="product-tag">Plan · ship · understand</p>
               </div>
             </div>
+            <button
+              type="button"
+              className="sidebar-close ghost btn-sm"
+              aria-label="Close menu"
+              onClick={closeNav}
+            >
+              Close
+            </button>
           </div>
 
           <div className="workspace-inline">
@@ -392,16 +436,16 @@ export function AppLayout() {
               </div>
             ) : null}
             {workspaces.length === 0 && status !== "loading" ? (
-              <Link className="workspace-cta" to="/onboarding">
+              <Link className="workspace-cta" to="/onboarding" onClick={closeNav}>
                 Create workspace →
               </Link>
             ) : null}
             {error && status === "failed" ? <p className="workspace-error">{error}</p> : null}
           </div>
 
-          <NavGroup title="Plan" items={planItems} counts={counts} />
-          <NavGroup title="Ship" items={SHIP} counts={counts} />
-          <NavGroup title="Intelligence" items={INTEL} counts={counts} />
+          <NavGroup title="Plan" items={planItems} counts={counts} onNavigate={closeNav} />
+          <NavGroup title="Ship" items={SHIP} counts={counts} onNavigate={closeNav} />
+          <NavGroup title="Intelligence" items={INTEL} counts={counts} onNavigate={closeNav} />
 
           <div className="sidebar-tip">
             <p className="sidebar-tip-kicker">Today</p>
@@ -410,8 +454,12 @@ export function AppLayout() {
               Issue moves, PR links, and repo syncs appear as toasts and in your notification inbox.
             </p>
             <div className="sidebar-tip-actions">
-              <Link to="/app/notifications">Inbox</Link>
-              <Link to="/app/ai">Ask AI</Link>
+              <Link to="/app/notifications" onClick={closeNav}>
+                Inbox
+              </Link>
+              <Link to="/app/ai" onClick={closeNav}>
+                Ask AI
+              </Link>
             </div>
           </div>
 
@@ -463,7 +511,37 @@ export function AppLayout() {
           </button>
         </div>
       </aside>
+
       <main className="main">
+        <header className="mobile-topbar">
+          <button
+            type="button"
+            className="mobile-nav-toggle"
+            aria-label="Open menu"
+            aria-expanded={navOpen}
+            aria-controls="app-sidebar"
+            onClick={() => setNavOpen(true)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+          <div className="mobile-topbar-brand">
+            <span className="logo mobile-logo">DF</span>
+            <div>
+              <strong>DevFlow AI</strong>
+              <span>{active?.name ?? "Workspace"}</span>
+            </div>
+          </div>
+          <Link
+            to="/app/notifications"
+            className={`mobile-topbar-link${unread > 0 ? " has-unread" : ""}`}
+            aria-label={unread > 0 ? `${unread} unread notifications` : "Notifications"}
+          >
+            <IconBell />
+            {unread > 0 ? <span className="mobile-unread">{unread > 9 ? "9+" : unread}</span> : null}
+          </Link>
+        </header>
         <div className="page">
           <Outlet context={{ workspaceId: active?.id, workspace: active }} />
         </div>

@@ -81,10 +81,10 @@ export function PullRequestsPage() {
       </div>
 
       <section className="panel table-panel">
-        <div className="table-head" style={{ gridTemplateColumns: "72px 1fr auto auto" }}>
+        <div className="table-head table-head-pr">
           <span>PR</span>
           <span>Title</span>
-          <span>Repo</span>
+          <span className="table-col-repo">Repo</span>
           <span>State</span>
         </div>
         {loading ? <p className="muted pad">Loading…</p> : null}
@@ -111,7 +111,7 @@ export function PullRequestsPage() {
                     {pr.issue ? ` · linked issue #${pr.issue.number}` : ""}
                   </span>
                 </span>
-                <span className="muted small">{pr.repository.fullName}</span>
+                <span className="muted small table-col-repo">{pr.repository.fullName}</span>
                 <span className={`status status-${pr.state.toLowerCase()}`}>{pr.state}</span>
               </Link>
             </li>

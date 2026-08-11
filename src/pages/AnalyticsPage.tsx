@@ -160,7 +160,7 @@ export function AnalyticsPage() {
         }
         actions={
           data ? (
-            <span className="muted" style={{ fontSize: "0.75rem", fontWeight: 650 }}>
+            <span className="muted analytics-window">
               Window {formatWindow(data.window.from, data.window.to)}
             </span>
           ) : null
@@ -179,7 +179,7 @@ export function AnalyticsPage() {
         <div className="empty panel">
           <h2>No delivery data yet</h2>
           <p className="muted">Create a project and link a repo to populate analytics.</p>
-          <div className="hero-actions" style={{ justifyContent: "center" }}>
+          <div className="hero-actions analytics-empty-actions">
             <Link className="button-link" to="/app/projects">
               Projects
             </Link>
