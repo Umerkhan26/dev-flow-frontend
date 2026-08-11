@@ -462,32 +462,6 @@ export function AppLayout() {
               </Link>
             </div>
           </div>
-
-          <div className="sidebar-block">
-            <h4>Capability map</h4>
-            <div className="roadmap-list">
-              <div className="roadmap-item">
-                <span>Core delivery</span>
-                <span className="roadmap-pill live">Live</span>
-              </div>
-              <div className="roadmap-item">
-                <span>GitHub sync</span>
-                <span className="roadmap-pill live">Live</span>
-              </div>
-              <div className="roadmap-item">
-                <span>AI summaries</span>
-                <span className="roadmap-pill live">Live</span>
-              </div>
-              <div className="roadmap-item">
-                <span>Realtime</span>
-                <span className="roadmap-pill live">Live</span>
-              </div>
-              <div className="roadmap-item">
-                <span>Analytics</span>
-                <span className="roadmap-pill live">Live</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div className="sidebar-footer">

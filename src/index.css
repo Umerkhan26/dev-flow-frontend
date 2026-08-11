@@ -224,10 +224,8 @@ label {
   gap: 0.35rem;
   min-height: 0;
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
   padding-right: 0.1rem;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.15) transparent;
 }
 .sidebar-brand {
   padding: 0.05rem 0.3rem 0;
