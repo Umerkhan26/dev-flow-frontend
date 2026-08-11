@@ -105,6 +105,16 @@ const authSlice = createSlice({
       state.error = null;
       localStorage.removeItem("devflow.auth");
     },
+    setSession(
+      state,
+      action: PayloadAction<{ user: User; accessToken: string; refreshToken: string }>,
+    ) {
+      state.user = action.payload.user;
+      state.accessToken = action.payload.accessToken;
+      state.refreshToken = action.payload.refreshToken;
+      state.error = null;
+      persist(state);
+    },
     setActiveWorkspace(state, action: PayloadAction<string>) {
       state.activeWorkspaceId = action.payload;
       persist(state);
@@ -166,5 +176,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, setActiveWorkspace, clearError } = authSlice.actions;
+export const { logout, setSession, setActiveWorkspace, clearError } = authSlice.actions;
 export default authSlice.reducer;

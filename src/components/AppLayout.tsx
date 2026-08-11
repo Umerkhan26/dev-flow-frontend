@@ -81,6 +81,16 @@ function IconAi() {
   );
 }
 
+function IconAnalytics() {
+  return (
+    <svg {...iconProps}>
+      <path d="M4 19V5" strokeLinecap="round" />
+      <path d="M4 19h16" strokeLinecap="round" />
+      <path d="M8 15v-4M12 15V8M16 15v-7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function IconBell() {
   return (
     <svg {...iconProps}>
@@ -170,6 +180,12 @@ const INTEL: NavItem[] = [
     hint: "Summaries & Q&A",
     icon: <IconAi />,
     accent: true,
+  },
+  {
+    to: "/app/analytics",
+    label: "Analytics",
+    hint: "Delivery signals",
+    icon: <IconAnalytics />,
   },
 ];
 
@@ -420,7 +436,7 @@ export function AppLayout() {
               </div>
               <div className="roadmap-item">
                 <span>Analytics</span>
-                <span className="roadmap-pill">Soon</span>
+                <span className="roadmap-pill live">Live</span>
               </div>
             </div>
           </div>

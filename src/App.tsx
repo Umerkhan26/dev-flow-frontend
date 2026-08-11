@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { ProtectedRoute, PublicOnlyRoute } from "./components/ProtectedRoute";
 import { AiAskPage } from "./pages/AiAskPage";
+import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { CycleDetailPage } from "./pages/CycleDetailPage";
 import { CyclesPage } from "./pages/CyclesPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -40,6 +41,7 @@ export default function App() {
             <Route path="pull-requests/:pullRequestId" element={<PullRequestDetailPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="ai" element={<AiAskPage />} />
+            <Route path="analytics" element={<AnalyticsPage />} />
           </Route>
         </Route>
         <Route path="/" element={<Navigate to="/app" replace />} />
