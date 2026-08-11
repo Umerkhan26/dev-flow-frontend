@@ -1,14 +1,36 @@
-import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
-import { createWorkspace } from "../app/store/authSlice";
-import { useAppDispatch } from "../hooks/redux";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { createWorkspace, fetchWorkspaces } from "../app/store/authSlice";
+import { useAppDispatch, useAppSelector } from "../hooks/redux";
 
 export function OnboardingPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const token = useAppSelector((s) => s.auth.accessToken);
+  const workspaces = useAppSelector((s) => s.auth.workspaces);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    async function check() {
+      if (!token) {
+        setChecking(false);
+        return;
+      }
+      const result = await dispatch(fetchWorkspaces());
+      setChecking(false);
+      if (fetchWorkspaces.fulfilled.match(result) && (result.payload.workspaces?.length ?? 0) > 0) {
+        navigate("/app", { replace: true });
+      }
+    }
+    void check();
+  }, [dispatch, navigate, token]);
+
+  useEffect(() => {
+    if (workspaces.length > 0) navigate("/app", { replace: true });
+  }, [workspaces.length, navigate]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -21,6 +43,10 @@ export function OnboardingPage() {
     } else {
       setError(result.error.message ?? "Could not create workspace");
     }
+  }
+
+  if (checking) {
+    return <p className="muted" style={{ padding: "2rem" }}>Checking workspace…</p>;
   }
 
   return (
@@ -65,6 +91,10 @@ export function OnboardingPage() {
               {loading ? "Creating…" : "Create workspace"}
             </button>
           </form>
+          <p className="muted small" style={{ marginTop: "0.85rem" }}>
+            Already invited to a teammate’s workspace? Ask them to invite your email, then{" "}
+            <Link to="/app">open the app</Link> (or log out and log in again).
+          </p>
         </div>
       </section>
     </div>

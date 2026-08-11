@@ -20,10 +20,38 @@ export function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [projectOpen, setProjectOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("MEMBER");
+  const [inviting, setInviting] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [key, setKey] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const canInvite = workspace?.role === "OWNER" || workspace?.role === "ADMIN";
+
+  async function onInvite(e: FormEvent) {
+    e.preventDefault();
+    if (!workspaceId || !token) return;
+    setInviting(true);
+    setError(null);
+    setInviteMsg(null);
+    try {
+      await apiRequest(`/api/workspaces/${workspaceId}/invitations`, {
+        method: "POST",
+        token,
+        body: { email: inviteEmail.trim(), role: inviteRole },
+      });
+      setInviteMsg(`Invited ${inviteEmail}. Ask them to refresh or log in again.`);
+      setInviteEmail("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invite failed");
+    } finally {
+      setInviting(false);
+    }
+  }
 
   useEffect(() => {
     void dispatch(fetchWorkspaces());
@@ -114,6 +142,11 @@ export function DashboardPage() {
           <h1>{workspace?.name ?? "Dashboard"}</h1>
         </div>
         <div className="topbar-actions">
+          {canInvite ? (
+            <button type="button" className="ghost" onClick={() => setInviteOpen(true)}>
+              Invite member
+            </button>
+          ) : null}
           <Link className="button-link ghost-link" to="/app/issues">
             All issues
           </Link>
@@ -293,6 +326,60 @@ export function DashboardPage() {
           <span className="tag">Next slice</span>
         </article>
       </section>
+
+      <Modal
+        open={inviteOpen}
+        title="Invite member"
+        description="They must register first with this email, then you invite them into this workspace."
+        onClose={() => {
+          setInviteOpen(false);
+          setError(null);
+          setInviteMsg(null);
+        }}
+      >
+        <form onSubmit={onInvite}>
+          <div className="stack">
+            <label>
+              Email
+              <input
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                required
+                placeholder="teammate@company.com"
+                autoFocus
+              />
+            </label>
+            <label>
+              Role
+              <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
+                <option value="MEMBER">MEMBER</option>
+                <option value="MANAGER">MANAGER</option>
+                <option value="ADMIN">ADMIN</option>
+                <option value="GUEST">GUEST</option>
+              </select>
+            </label>
+            {error ? <p className="error">{error}</p> : null}
+            {inviteMsg ? <p className="muted small">{inviteMsg}</p> : null}
+          </div>
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => {
+                setInviteOpen(false);
+                setError(null);
+                setInviteMsg(null);
+              }}
+            >
+              Close
+            </button>
+            <button type="submit" disabled={inviting}>
+              {inviting ? "Inviting…" : "Invite"}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       <Modal
         open={projectOpen}

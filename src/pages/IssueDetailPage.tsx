@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AiPanel } from "../components/AiPanel";
+import { StatusChangeModal } from "../components/StatusChangeModal";
 import { useAppSelector } from "../hooks/redux";
 import { apiRequest } from "../lib/api";
 import {
@@ -23,6 +24,7 @@ export function IssueDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [newLabelName, setNewLabelName] = useState("");
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
   async function load() {
     if (!issueId || !token) return;
@@ -98,6 +100,38 @@ export function IssueDetailPage() {
       await patchIssue({ labelIds: nextIds });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create label");
+    }
+  }
+
+  async function confirmStatusChange(note: string) {
+    if (!issueId || !token || !pendingStatus || !issue) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const data = await apiRequest<{ issue: Issue }>(`/api/issues/${issueId}`, {
+        method: "PATCH",
+        token,
+        body: { status: pendingStatus },
+      });
+      setIssue(data.issue);
+      if (note) {
+        const commentRes = await apiRequest<{ comment: IssueComment }>(
+          `/api/issues/${issueId}/comments`,
+          {
+            method: "POST",
+            token,
+            body: {
+              body: `Status: ${statusLabel(issue.status)} → ${statusLabel(pendingStatus)}\n${note}`,
+            },
+          },
+        );
+        setComments((prev) => [...prev, commentRes.comment]);
+      }
+      setPendingStatus(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update status");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -179,7 +213,11 @@ export function IssueDetailPage() {
                 <select
                   value={issue.status}
                   disabled={saving}
-                  onChange={(e) => void patchIssue({ status: e.target.value })}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    if (next === issue.status) return;
+                    setPendingStatus(next);
+                  }}
                 >
                   {ISSUE_STATUSES.map((s) => (
                     <option key={s} value={s}>
@@ -236,6 +274,17 @@ export function IssueDetailPage() {
           </section>
         </div>
       </div>
+
+      <StatusChangeModal
+        open={Boolean(pendingStatus)}
+        issueKey={formatIssueKey(issue.project?.key ?? "PRJ", issue.number)}
+        issueTitle={issue.title}
+        fromStatus={issue.status}
+        toStatus={pendingStatus ?? issue.status}
+        saving={saving}
+        onClose={() => setPendingStatus(null)}
+        onConfirm={confirmStatusChange}
+      />
     </div>
   );
 }

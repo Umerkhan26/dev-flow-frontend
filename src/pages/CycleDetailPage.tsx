@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AiPanel } from "../components/AiPanel";
 import { Modal } from "../components/Modal";
+import { StatusChangeModal } from "../components/StatusChangeModal";
 import { useAppSelector } from "../hooks/redux";
 import { apiRequest } from "../lib/api";
 import {
@@ -26,6 +27,10 @@ export function CycleDetailPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [pendingMove, setPendingMove] = useState<{
+    issue: Issue;
+    toStatus: string;
+  } | null>(null);
 
   async function load() {
     if (!cycleId || !token) {
@@ -63,33 +68,41 @@ export function CycleDetailPage() {
     [projectIssues, cycleId],
   );
 
-  async function moveIssue(issueId: string, status: string) {
-    if (!token) return;
+  async function confirmMove(note: string) {
+    if (!token || !pendingMove) return;
+    const { issue, toStatus } = pendingMove;
     const prev = board;
+    setSaving(true);
     setBoard((current) => {
       const next: Board = {};
       for (const col of BOARD_COLUMNS) {
-        next[col] = (current[col] ?? []).filter((i) => i.id !== issueId);
+        next[col] = (current[col] ?? []).filter((i) => i.id !== issue.id);
       }
-      const issue =
-        Object.values(current)
-          .flat()
-          .find((i) => i.id === issueId) ?? null;
-      if (issue) {
-        next[status] = [{ ...issue, status }, ...(next[status] ?? [])];
-      }
+      next[toStatus] = [{ ...issue, status: toStatus }, ...(next[toStatus] ?? [])];
       return next;
     });
 
     try {
-      await apiRequest(`/api/issues/${issueId}`, {
+      await apiRequest(`/api/issues/${issue.id}`, {
         method: "PATCH",
         token,
-        body: { status },
+        body: { status: toStatus },
       });
+      if (note) {
+        await apiRequest(`/api/issues/${issue.id}/comments`, {
+          method: "POST",
+          token,
+          body: {
+            body: `Status: ${statusLabel(issue.status)} → ${statusLabel(toStatus)}\n${note}`,
+          },
+        });
+      }
+      setPendingMove(null);
     } catch (err) {
       setBoard(prev);
       setError(err instanceof Error ? err.message : "Could not move issue");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -200,7 +213,11 @@ export function CycleDetailPage() {
                     <span className="muted small">{issue.assignee?.name ?? "Unassigned"}</span>
                     <select
                       value={issue.status}
-                      onChange={(e) => void moveIssue(issue.id, e.target.value)}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        if (next === issue.status) return;
+                        setPendingMove({ issue, toStatus: next });
+                      }}
                       aria-label="Move issue"
                     >
                       {BOARD_COLUMNS.map((s) => (
@@ -264,6 +281,20 @@ export function CycleDetailPage() {
           </div>
         </form>
       </Modal>
+
+      <StatusChangeModal
+        open={Boolean(pendingMove)}
+        issueKey={formatIssueKey(
+          pendingMove?.issue.project?.key ?? cycle?.project?.key ?? "PRJ",
+          pendingMove?.issue.number ?? 0,
+        )}
+        issueTitle={pendingMove?.issue.title ?? ""}
+        fromStatus={pendingMove?.issue.status ?? "TODO"}
+        toStatus={pendingMove?.toStatus ?? "TODO"}
+        saving={saving}
+        onClose={() => setPendingMove(null)}
+        onConfirm={confirmMove}
+      />
     </div>
   );
 }
