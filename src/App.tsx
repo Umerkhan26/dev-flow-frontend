@@ -8,6 +8,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { IssueDetailPage } from "./pages/IssueDetailPage";
 import { IssuesPage } from "./pages/IssuesPage";
 import { LoginPage } from "./pages/LoginPage";
+import { NotificationsPage } from "./pages/NotificationsPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="repositories" element={<RepositoriesPage />} />
             <Route path="pull-requests" element={<PullRequestsPage />} />
             <Route path="pull-requests/:pullRequestId" element={<PullRequestDetailPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
             <Route path="ai" element={<AiAskPage />} />
           </Route>
         </Route>

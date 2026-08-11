@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { Modal } from "../components/Modal";
+import { PageHeader } from "../components/PageHeader";
 import { useAppSelector } from "../hooks/redux";
 import { apiRequest } from "../lib/api";
 import type { Cycle, Project } from "../types/engineering";
@@ -76,29 +77,58 @@ export function CyclesPage() {
 
   return (
     <div>
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">Planning</p>
-          <h1>Cycles</h1>
-        </div>
-        <button type="button" onClick={() => setOpen(true)} disabled={projects.length === 0}>
-          New cycle
-        </button>
-      </header>
+      <PageHeader
+        eyebrow="Plan"
+        title="Cycles"
+        description="Time-box delivery for a project. Pull issues onto the board, move them across columns, and track progress."
+        actions={
+          <button type="button" onClick={() => setOpen(true)} disabled={projects.length === 0}>
+            New cycle
+          </button>
+        }
+        chips={[
+          { label: "Cycles", value: cycles.length, tone: "accent" },
+          {
+            label: "Active",
+            value: cycles.filter((c) => c.status === "ACTIVE").length,
+            tone: "ok",
+          },
+          {
+            label: "Avg progress",
+            value: `${
+              cycles.length
+                ? Math.round(cycles.reduce((s, c) => s + c.progress, 0) / cycles.length)
+                : 0
+            }%`,
+          },
+        ]}
+      />
+
+      <div className="hint-strip">
+        <strong>Board tip:</strong> Add issues from the cycle page, then change status from column dropdowns.
+      </div>
 
       {loading ? <p className="muted">Loading cycles…</p> : null}
       {error && !open ? <p className="error">{error}</p> : null}
 
       {!loading && projects.length === 0 ? (
         <section className="panel">
-          <p className="muted">Create a project first, then add a cycle.</p>
-          <Link to="/app/projects">Go to projects</Link>
+          <h2>Need a project first</h2>
+          <p className="muted" style={{ marginTop: "0.35rem" }}>
+            Cycles belong to a project. Create one, then come back to start a sprint.
+          </p>
+          <Link className="button-link" to="/app/projects" style={{ marginTop: "0.75rem" }}>
+            Go to projects
+          </Link>
         </section>
       ) : null}
 
       {!loading && projects.length > 0 && cycles.length === 0 ? (
         <section className="panel">
-          <p className="muted">No cycles yet. Create a 1–2 week cycle and pull issues onto the board.</p>
+          <h2>No cycles yet</h2>
+          <p className="muted" style={{ marginTop: "0.35rem" }}>
+            Create a 1–2 week cycle, set a goal, and pull issues onto the board.
+          </p>
         </section>
       ) : null}
 

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
+import { PageHeader } from "../components/PageHeader";
 import { useAppSelector } from "../hooks/redux";
 import { apiRequest } from "../lib/api";
 
@@ -49,17 +50,35 @@ export function PullRequestsPage() {
     void load();
   }, [workspaceId, token]);
 
+  const chips = useMemo(() => {
+    const open = prs.filter((p) => p.state === "OPEN").length;
+    const merged = prs.filter((p) => p.state === "MERGED").length;
+    const linked = prs.filter((p) => p.issue).length;
+    return [
+      { label: "Total", value: prs.length },
+      { label: "Open", value: open, tone: "accent" as const },
+      { label: "Merged", value: merged, tone: "ok" as const },
+      { label: "Linked to issues", value: linked },
+    ];
+  }, [prs]);
+
   return (
     <div>
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">Integrations</p>
-          <h1>Pull requests</h1>
-        </div>
-        <Link className="button-link ghost-link" to="/app/repositories">
-          Repositories
-        </Link>
-      </header>
+      <PageHeader
+        eyebrow="Ship"
+        title="Pull requests"
+        description="Synced from linked GitHub repos. Open a PR to review details and connect it to a DevFlow issue."
+        actions={
+          <Link className="button-link ghost-link" to="/app/repositories">
+            Repositories
+          </Link>
+        }
+        chips={chips}
+      />
+
+      <div className="hint-strip">
+        <strong>Next:</strong> Open a PR → link an issue → use AI Summarize to explain the change.
+      </div>
 
       <section className="panel table-panel">
         <div className="table-head" style={{ gridTemplateColumns: "72px 1fr auto auto" }}>

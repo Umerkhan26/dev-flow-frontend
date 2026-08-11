@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router-dom";
+import { PageHeader } from "../components/PageHeader";
 import { useAppSelector } from "../hooks/redux";
 import { API_URL, apiRequest } from "../lib/api";
 
@@ -172,21 +173,38 @@ export function RepositoriesPage() {
 
   return (
     <div>
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">Integrations</p>
-          <h1>Repositories</h1>
-        </div>
-        {status?.connected ? (
-          <Link className="button-link ghost-link" to="/app/pull-requests">
-            View PRs
-          </Link>
-        ) : (
-          <button type="button" onClick={() => void connectGithub()} disabled={busy === "connect"}>
-            {busy === "connect" ? "Redirecting…" : "Connect GitHub"}
-          </button>
-        )}
-      </header>
+      <PageHeader
+        eyebrow="Ship"
+        title="Repositories"
+        description="Connect GitHub, link the repos you care about, and sync pull requests into this workspace."
+        actions={
+          status?.connected ? (
+            <Link className="button-link ghost-link" to="/app/pull-requests">
+              View PRs
+            </Link>
+          ) : (
+            <button type="button" onClick={() => void connectGithub()} disabled={busy === "connect"}>
+              {busy === "connect" ? "Redirecting…" : "Connect GitHub"}
+            </button>
+          )
+        }
+        chips={[
+          {
+            label: "GitHub",
+            value: status?.connected ? "Connected" : status?.configured ? "Ready" : "Setup",
+            tone: status?.connected ? "ok" : "warn",
+          },
+          { label: "Linked", value: repos.length, tone: "accent" },
+          {
+            label: "PRs synced",
+            value: repos.reduce((n, r) => n + (r.prCount || 0), 0),
+          },
+        ]}
+      />
+
+      <div className="hint-strip">
+        <strong>Safe sync:</strong> DevFlow only reads PRs from GitHub — it does not change your repos.
+      </div>
 
       {params.get("connected") ? (
         <p className="muted" style={{ marginBottom: "0.75rem" }}>

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
+import { PageHeader } from "../components/PageHeader";
 import { useAppSelector } from "../hooks/redux";
 import { apiRequest } from "../lib/api";
 import { formatIssueKey, statusLabel, type Issue } from "../types/engineering";
@@ -55,17 +56,35 @@ export function IssuesPage() {
     };
   }, [workspaceId, token]);
 
+  const chips = useMemo(() => {
+    const open = issues.filter((i) => !["DONE", "CANCELLED"].includes(i.status)).length;
+    const review = issues.filter((i) => i.status === "IN_REVIEW").length;
+    const high = issues.filter((i) => i.priority === "HIGH" || i.priority === "URGENT").length;
+    return [
+      { label: "Total", value: issues.length },
+      { label: "Open", value: open, tone: "accent" as const },
+      { label: "In review", value: review, tone: "warn" as const },
+      { label: "High priority", value: high },
+    ];
+  }, [issues]);
+
   return (
     <div>
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">Delivery</p>
-          <h1>Issues</h1>
-        </div>
-        <Link className="button-link" to="/app/projects">
-          Open project
-        </Link>
-      </header>
+      <PageHeader
+        eyebrow="Plan"
+        title="Issues"
+        description="Every engineering task across projects — status, priority, and links back to PRs when work ships."
+        actions={
+          <Link className="button-link" to="/app/projects">
+            Open project
+          </Link>
+        }
+        chips={chips}
+      />
+
+      <div className="hint-strip">
+        <strong>Flow:</strong> Pick a project → create issue → move status → link a PR when code is ready.
+      </div>
 
       <section className="panel table-panel">
         <div className="table-head">

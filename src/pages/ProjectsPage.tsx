@@ -1,6 +1,7 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { Modal } from "../components/Modal";
+import { PageHeader } from "../components/PageHeader";
 import { apiRequest } from "../lib/api";
 import { useAppSelector } from "../hooks/redux";
 import type { Issue, Project } from "../types/engineering";
@@ -80,24 +81,47 @@ export function ProjectsPage() {
     }
   }
 
+  const stats = useMemo(() => {
+    const open = issues.filter((i) => !["DONE", "CANCELLED"].includes(i.status)).length;
+    const active = issues.filter((i) => i.status === "IN_PROGRESS").length;
+    return { open, active, total: issues.length };
+  }, [issues]);
+
   return (
     <div>
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">Delivery</p>
-          <h1>Projects</h1>
-        </div>
-        <button type="button" onClick={() => setOpen(true)}>
-          New project
-        </button>
-      </header>
+      <PageHeader
+        eyebrow="Plan"
+        title="Projects"
+        description="Group related work by product area. Each project owns issues, cycles, and delivery progress."
+        actions={
+          <button type="button" onClick={() => setOpen(true)}>
+            New project
+          </button>
+        }
+        chips={[
+          { label: "Projects", value: projects.length, tone: "accent" },
+          { label: "Open issues", value: stats.open },
+          { label: "In progress", value: stats.active, tone: "warn" },
+        ]}
+      />
+
+      <div className="hint-strip">
+        <strong>Tip:</strong> Create a project → add issues → put them on a cycle board → link GitHub PRs.
+      </div>
 
       {loading ? <p className="muted">Loading projects…</p> : null}
       {error && !open ? <p className="error">{error}</p> : null}
 
       {!loading && projects.length === 0 ? (
         <section className="panel">
-          <p className="muted">No projects yet. Create one to start tracking issues.</p>
+          <h2>Start with your first project</h2>
+          <p className="muted" style={{ marginTop: "0.35rem" }}>
+            Projects keep engineering work scoped — auth, billing, mobile, etc. Keys like{" "}
+            <code>ACP</code> become issue IDs (<code>ACP-12</code>).
+          </p>
+          <button type="button" style={{ marginTop: "0.75rem" }} onClick={() => setOpen(true)}>
+            Create project
+          </button>
         </section>
       ) : (
         <div className="projects-grid">

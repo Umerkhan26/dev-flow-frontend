@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useOutletContext } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
+import { PageHeader } from "../components/PageHeader";
 import { useAppSelector } from "../hooks/redux";
 import { apiRequest } from "../lib/api";
 
@@ -9,6 +10,7 @@ type AiStatus = {
   llmConfigured: boolean;
   model: string | null;
   mode: string;
+  provider?: string;
   message: string;
 };
 
@@ -77,17 +79,38 @@ export function AiAskPage() {
 
   return (
     <div>
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">Intelligence</p>
-          <h1>AI assistant</h1>
-          <p className="muted" style={{ marginTop: "0.15rem" }}>
-            Ask about issues, PRs, and cycle delivery using only this workspace’s data.
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="Intelligence"
+        title="AI assistant"
+        description="Ask about issues, PRs, and cycle delivery using only this workspace’s data — never random internet context."
+        actions={
+          <Link className="button-link ghost-link" to="/app/pull-requests">
+            Browse PRs
+          </Link>
+        }
+        chips={[
+          {
+            label: "Mode",
+            value:
+              status?.provider === "gemini"
+                ? "Gemini"
+                : status?.mode === "llm"
+                  ? "LLM"
+                  : "Heuristic",
+            tone: status?.mode === "llm" ? "ok" : "accent",
+          },
+          {
+            label: "Model",
+            value: status?.model ?? "built-in",
+          },
+        ]}
+      />
 
-      {status ? <p className="muted small">{status.message}</p> : null}
+      <div className="hint-strip">
+        <strong>Also:</strong> Open any issue, PR, or cycle and click <strong>Summarize</strong> for a focused brief.
+      </div>
+
+      {status ? <p className="muted small" style={{ marginBottom: "0.65rem" }}>{status.message}</p> : null}
       {error ? <p className="error">{error}</p> : null}
 
       <section className="panel">
