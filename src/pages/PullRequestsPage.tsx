@@ -19,14 +19,36 @@ type PullRequest = {
   issue: { id: string; number: number; title: string; projectId: string } | null;
 };
 
+type RepoOption = { id: string; fullName: string };
+
 export function PullRequestsPage() {
   const ctx = useOutletContext<OutletCtx>() ?? {};
   const token = useAppSelector((s) => s.auth.accessToken);
   const activeWorkspaceId = useAppSelector((s) => s.auth.activeWorkspaceId);
   const workspaceId = ctx.workspaceId ?? activeWorkspaceId ?? undefined;
   const [prs, setPrs] = useState<PullRequest[]>([]);
+  const [repos, setRepos] = useState<RepoOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [stateFilter, setStateFilter] = useState("OPEN");
+  const [repoFilter, setRepoFilter] = useState("");
+  const [linkedFilter, setLinkedFilter] = useState("all");
+
+  useEffect(() => {
+    async function loadRepos() {
+      if (!token || !workspaceId) return;
+      try {
+        const data = await apiRequest<{ repositories: RepoOption[] }>(
+          `/api/workspaces/${workspaceId}/repositories`,
+          { token },
+        );
+        setRepos((data.repositories ?? []).map((r) => ({ id: r.id, fullName: r.fullName })));
+      } catch {
+        setRepos([]);
+      }
+    }
+    void loadRepos();
+  }, [token, workspaceId]);
 
   useEffect(() => {
     async function load() {
@@ -35,9 +57,15 @@ export function PullRequestsPage() {
         return;
       }
       setLoading(true);
+      setError(null);
       try {
+        const params = new URLSearchParams();
+        if (stateFilter) params.set("state", stateFilter);
+        if (repoFilter) params.set("repositoryId", repoFilter);
+        if (linkedFilter === "linked") params.set("linked", "1");
+        if (linkedFilter === "unlinked") params.set("linked", "0");
         const data = await apiRequest<{ pullRequests: PullRequest[] }>(
-          `/api/workspaces/${workspaceId}/pull-requests`,
+          `/api/workspaces/${workspaceId}/pull-requests?${params}`,
           { token },
         );
         setPrs(data.pullRequests ?? []);
@@ -48,17 +76,17 @@ export function PullRequestsPage() {
       }
     }
     void load();
-  }, [workspaceId, token]);
+  }, [workspaceId, token, stateFilter, repoFilter, linkedFilter]);
 
   const chips = useMemo(() => {
     const open = prs.filter((p) => p.state === "OPEN").length;
     const merged = prs.filter((p) => p.state === "MERGED").length;
     const linked = prs.filter((p) => p.issue).length;
     return [
-      { label: "Total", value: prs.length },
-      { label: "Open", value: open, tone: "accent" as const },
-      { label: "Merged", value: merged, tone: "ok" as const },
-      { label: "Linked to issues", value: linked },
+      { label: "Showing", value: prs.length },
+      { label: "Open (page)", value: open, tone: "accent" as const },
+      { label: "Merged (page)", value: merged, tone: "ok" as const },
+      { label: "Linked (page)", value: linked },
     ];
   }, [prs]);
 
@@ -67,7 +95,7 @@ export function PullRequestsPage() {
       <PageHeader
         eyebrow="Ship"
         title="Pull requests"
-        description="Synced from linked GitHub repos. Open a PR to review details and connect it to a DevFlow issue."
+        description="Synced from linked GitHub repos. Filter by state, repo, or issue link."
         actions={
           <Link className="button-link ghost-link" to="/app/repositories">
             Repositories
@@ -76,11 +104,38 @@ export function PullRequestsPage() {
         chips={chips}
       />
 
-      <div className="hint-strip">
-        <strong>Next:</strong> Open a PR → link an issue → use AI Summarize to explain the change.
+      <div className="filters-bar analytics-filters">
+        <label>
+          State
+          <select value={stateFilter} onChange={(e) => setStateFilter(e.target.value)}>
+            <option value="OPEN">Open</option>
+            <option value="MERGED">Merged</option>
+            <option value="CLOSED">Closed</option>
+            <option value="ALL">All</option>
+          </select>
+        </label>
+        <label>
+          Repository
+          <select value={repoFilter} onChange={(e) => setRepoFilter(e.target.value)}>
+            <option value="">All repos</option>
+            {repos.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.fullName}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Issue link
+          <select value={linkedFilter} onChange={(e) => setLinkedFilter(e.target.value)}>
+            <option value="all">Any</option>
+            <option value="linked">Linked</option>
+            <option value="unlinked">Unlinked</option>
+          </select>
+        </label>
       </div>
 
-      <section className="panel table-panel">
+      <section className="panel table-panel" style={{ marginTop: "0.75rem" }}>
         <div className="table-head table-head-pr">
           <span>PR</span>
           <span>Title</span>
@@ -91,11 +146,8 @@ export function PullRequestsPage() {
         {error ? <p className="error">{error}</p> : null}
         {!loading && prs.length === 0 ? (
           <div className="empty-inline">
-            <p className="muted">No pull requests found.</p>
-            <p className="muted small">
-              Sync worked — these GitHub repos currently have no PRs. Open a PR on GitHub, then
-              click Sync now.
-            </p>
+            <p className="muted">No pull requests match these filters.</p>
+            <p className="muted small">Try All states, or sync a repo from Repositories.</p>
             <Link to="/app/repositories">Back to repositories</Link>
           </div>
         ) : null}
@@ -108,6 +160,7 @@ export function PullRequestsPage() {
                   <strong>{pr.title}</strong>
                   <span className="muted block">
                     {pr.authorLogin}
+                    {pr.draft ? " · draft" : ""}
                     {pr.issue ? ` · linked issue #${pr.issue.number}` : ""}
                   </span>
                 </span>

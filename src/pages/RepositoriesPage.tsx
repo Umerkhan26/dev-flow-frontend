@@ -235,6 +235,28 @@ export function RepositoriesPage() {
     }
   }
 
+  async function unlinkRepo(repo: Repository) {
+    if (!token) return;
+    if (
+      !window.confirm(
+        `Unlink ${repo.fullName} from this workspace? Synced PRs and Actions for this repo will be removed.`,
+      )
+    ) {
+      return;
+    }
+    setBusy(repo.id);
+    setError(null);
+    try {
+      await apiRequest(`/api/repositories/${repo.id}`, { method: "DELETE", token });
+      setSyncMsg(`Unlinked ${repo.fullName}`);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not unlink repository");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -353,6 +375,14 @@ export function RepositoriesPage() {
                   onClick={() => void openSyncModal(repo)}
                 >
                   {busy === repo.id ? "Syncing…" : "Sync…"}
+                </button>
+                <button
+                  type="button"
+                  className="ghost btn-sm"
+                  disabled={busy === repo.id}
+                  onClick={() => void unlinkRepo(repo)}
+                >
+                  Unlink
                 </button>
               </li>
             ))}
