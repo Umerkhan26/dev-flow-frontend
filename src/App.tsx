@@ -6,6 +6,7 @@ import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { CycleDetailPage } from "./pages/CycleDetailPage";
 import { CyclesPage } from "./pages/CyclesPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { IssueDetailPage } from "./pages/IssueDetailPage";
 import { IssuesPage } from "./pages/IssuesPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -17,6 +18,8 @@ import { PullRequestDetailPage } from "./pages/PullRequestDetailPage";
 import { PullRequestsPage } from "./pages/PullRequestsPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { RepositoriesPage } from "./pages/RepositoriesPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
+import { SettingsPage } from "./pages/SettingsPage";
 
 export default function App() {
   return (
@@ -26,6 +29,8 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
         </Route>
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/app" element={<AppLayout />}>
@@ -42,6 +47,7 @@ export default function App() {
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="ai" element={<AiAskPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
+            <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Route>
         <Route path="/" element={<Navigate to="/app" replace />} />
