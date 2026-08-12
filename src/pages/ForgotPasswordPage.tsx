@@ -28,6 +28,7 @@ export function ForgotPasswordPage() {
         ok: boolean;
         message: string;
         emailSent?: boolean;
+        warning?: string;
         devCode?: string;
       }>("/api/auth/forgot-password", {
         method: "POST",
@@ -37,7 +38,8 @@ export function ForgotPasswordPage() {
       setInfo(
         data.emailSent
           ? "We sent a 6-digit code to your Gmail. Enter it below."
-          : "Check your email for a 6-digit code. If SMTP is not configured, use the dev code shown below.",
+          : data.warning ??
+              "Email could not be sent. Use the on-screen code if shown, or fix SMTP settings.",
       );
       if (data.devCode) setDevCode(data.devCode);
       setStep("otp");
