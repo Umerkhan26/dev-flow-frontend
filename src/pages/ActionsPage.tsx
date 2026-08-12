@@ -20,6 +20,11 @@ type WorkflowRun = {
   repository: { id: string; fullName: string; htmlUrl: string };
 };
 
+function statusClass(run: WorkflowRun) {
+  const key = (run.conclusion || run.status || "unknown").toLowerCase().replace(/_/g, "-");
+  return `status status-${key}`;
+}
+
 export function ActionsPage() {
   const ctx = useOutletContext<OutletCtx>() ?? {};
   const token = useAppSelector((s) => s.auth.accessToken);
@@ -67,24 +72,26 @@ export function ActionsPage() {
     (r) => r.conclusion === "failure" || r.conclusion === "timed_out",
   ).length;
   const running = runs.filter((r) => r.status !== "completed").length;
+  const succeeded = runs.filter((r) => r.conclusion === "success").length;
 
   return (
     <div>
       <PageHeader
         eyebrow="Ship"
         title="GitHub Actions"
-        description="Recent workflow runs from linked repositories. Sync a repo to refresh."
+        description="CI status from linked repositories. Sync a repo to import the latest workflow runs."
         chips={[
           { label: "Runs", value: runs.length },
           { label: "In progress", value: running, tone: running ? "accent" : "default" },
-          { label: "Failed", value: failed, tone: failed ? "warn" : "ok" },
+          { label: "Passed", value: succeeded, tone: succeeded ? "ok" : "default" },
+          { label: "Failed", value: failed, tone: failed ? "warn" : "default" },
         ]}
         actions={
           <div className="row-actions">
             <button type="button" className="ghost btn-sm" onClick={() => void load()}>
               Refresh
             </button>
-            <Link className="button-link ghost-link" to="/app/repositories">
+            <Link className="button-link ghost-link btn-sm" to="/app/repositories">
               Repositories
             </Link>
           </div>
@@ -95,15 +102,28 @@ export function ActionsPage() {
       {error ? <p className="error">{error}</p> : null}
 
       {!loading && !error && runs.length === 0 ? (
-        <div className="empty panel">
-          <h2>No workflow runs yet</h2>
+        <section className="panel actions-empty">
+          <div className="panel-head">
+            <h3>No workflow runs yet</h3>
+          </div>
           <p className="muted">
-            Link a GitHub repository and click Sync — Actions runs are imported with pull requests.
+            Actions appear here after a linked GitHub repo is synced. Workflows are imported
+            together with pull requests.
           </p>
-          <Link className="button-link" to="/app/repositories">
-            Open repositories
-          </Link>
-        </div>
+          <ol className="actions-empty-steps">
+            <li>Open Repositories and connect GitHub if needed</li>
+            <li>Link a repository that uses GitHub Actions</li>
+            <li>Click <strong>Sync now</strong>, then return here</li>
+          </ol>
+          <div className="hero-actions analytics-empty-actions">
+            <Link className="button-link" to="/app/repositories">
+              Go to repositories
+            </Link>
+            <button type="button" className="ghost" onClick={() => void load()}>
+              Refresh list
+            </button>
+          </div>
+        </section>
       ) : null}
 
       {runs.length > 0 ? (
@@ -125,9 +145,7 @@ export function ActionsPage() {
                       : ""}
                   </span>
                 </span>
-                <span className={`status status-${(run.conclusion || run.status).toLowerCase().replace(/_/g, "-")}`}>
-                  {run.conclusion || run.status}
-                </span>
+                <span className={statusClass(run)}>{run.conclusion || run.status}</span>
                 <a href={run.htmlUrl} target="_blank" rel="noreferrer" className="muted small">
                   GitHub
                 </a>

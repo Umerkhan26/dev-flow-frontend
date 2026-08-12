@@ -17,6 +17,40 @@ type Notification = {
   actor?: { id: string; name: string } | null;
 };
 
+function typeMeta(type: string) {
+  switch (type) {
+    case "REPO_SYNCED":
+      return { label: "Sync", tone: "sky", icon: "↻" };
+    case "WORKFLOW_FAILED":
+      return { label: "CI", tone: "danger", icon: "!" };
+    case "ISSUE_CREATED":
+    case "ISSUE_UPDATED":
+      return { label: "Issue", tone: "accent", icon: "●" };
+    case "PR_LINKED":
+      return { label: "PR", tone: "ok", icon: "⎇" };
+    case "CYCLE_CREATED":
+    case "CYCLE_UPDATED":
+      return { label: "Cycle", tone: "sky", icon: "◷" };
+    default:
+      return { label: "Update", tone: "default", icon: "•" };
+  }
+}
+
+function relativeTime(iso: string) {
+  const ms = Date.now() - new Date(iso).getTime();
+  const mins = Math.round(ms / 60_000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export function NotificationsPage() {
   const ctx = useOutletContext<OutletCtx>() ?? {};
   const token = useAppSelector((s) => s.auth.accessToken);
@@ -83,68 +117,81 @@ export function NotificationsPage() {
       <PageHeader
         eyebrow="Workspace"
         title="Notifications"
-        description="Live activity from issues, pull requests, cycles, and repo sync — stored for your inbox."
+        description="Activity from issues, PRs, cycles, and repo sync — kept in your inbox."
         actions={
           <button type="button" className="ghost" disabled={!unreadCount} onClick={() => void markAllRead()}>
             Mark all read
           </button>
         }
         chips={[
-          { label: "Unread", value: unreadCount, tone: unreadCount ? "accent" : "ok" },
+          { label: "Unread", value: unreadCount, tone: unreadCount ? "accent" : "default" },
           { label: "Total", value: items.length },
         ]}
       />
 
-      <div className="hint-strip">
-        <strong>Realtime:</strong> Keep this tab open to receive live toasts when teammates update work.
-      </div>
-
       {loading ? <p className="muted">Loading…</p> : null}
       {error ? <p className="error">{error}</p> : null}
 
-      <section className="panel table-panel">
-        {!loading && items.length === 0 ? (
-          <div className="empty-inline">
-            <p className="muted">No notifications yet.</p>
-            <p className="muted small">Create an issue or sync a repo to generate activity.</p>
+      {!loading && items.length === 0 ? (
+        <section className="panel actions-empty">
+          <div className="panel-head">
+            <h3>Inbox is clear</h3>
           </div>
-        ) : null}
-        <ul className="data-list">
-          {items.map((n) => (
-            <li key={n.id}>
-              <div className={`data-row notify-row${n.readAt ? "" : " unread"}`}>
-                <span className="grow">
-                  <strong>{n.title}</strong>
-                  <span className="muted block">
-                    {n.body || n.type}
-                    {n.actor ? ` · ${n.actor.name}` : ""}
-                    {" · "}
-                    {new Date(n.createdAt).toLocaleString()}
-                  </span>
-                </span>
-                {n.link ? (
-                  <Link
-                    to={n.link}
-                    className="muted small"
-                    onClick={() => {
-                      if (!n.readAt) void markOne(n.id);
-                    }}
-                  >
-                    Open
-                  </Link>
-                ) : null}
-                {!n.readAt ? (
-                  <button type="button" className="ghost btn-sm" onClick={() => void markOne(n.id)}>
-                    Read
-                  </button>
-                ) : (
-                  <span className="muted small">Read</span>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
+          <p className="muted">
+            When teammates update issues or a repo sync finds pull requests / CI, they show up here.
+          </p>
+        </section>
+      ) : null}
+
+      {items.length > 0 ? (
+        <section className="notify-feed">
+          {items.map((n) => {
+            const meta = typeMeta(n.type);
+            const unread = !n.readAt;
+            return (
+              <article
+                key={n.id}
+                className={`notify-card${unread ? " is-unread" : ""}${meta.tone ? ` tone-${meta.tone}` : ""}`}
+              >
+                <div className={`notify-icon tone-${meta.tone}`} aria-hidden>
+                  {meta.icon}
+                </div>
+                <div className="notify-body">
+                  <div className="notify-top">
+                    <span className={`notify-badge tone-${meta.tone}`}>{meta.label}</span>
+                    <time className="notify-time" dateTime={n.createdAt} title={new Date(n.createdAt).toLocaleString()}>
+                      {relativeTime(n.createdAt)}
+                    </time>
+                  </div>
+                  <h3 className="notify-title">{n.title}</h3>
+                  {n.body ? <p className="notify-copy">{n.body}</p> : null}
+                  {n.actor ? <p className="notify-actor">by {n.actor.name}</p> : null}
+                </div>
+                <div className="notify-actions">
+                  {n.link ? (
+                    <Link
+                      to={n.link}
+                      className="button-link ghost-link btn-sm"
+                      onClick={() => {
+                        if (unread) void markOne(n.id);
+                      }}
+                    >
+                      Open
+                    </Link>
+                  ) : null}
+                  {unread ? (
+                    <button type="button" className="ghost btn-sm" onClick={() => void markOne(n.id)}>
+                      Mark read
+                    </button>
+                  ) : (
+                    <span className="notify-read-pill">Read</span>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      ) : null}
     </div>
   );
 }

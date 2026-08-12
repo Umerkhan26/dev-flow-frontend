@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router-dom";
+import { Modal } from "../components/Modal";
 import { PageHeader } from "../components/PageHeader";
 import { useAppSelector } from "../hooks/redux";
 import { API_URL, apiRequest } from "../lib/api";
@@ -32,6 +33,8 @@ type Repository = {
   description: string | null;
   private: boolean;
   htmlUrl: string;
+  defaultBranch: string | null;
+  syncBaseBranch: string | null;
   syncStatus: string;
   lastSyncedAt: string | null;
   lastSyncError: string | null;
@@ -51,6 +54,12 @@ export function RepositoriesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+
+  const [syncRepoTarget, setSyncRepoTarget] = useState<Repository | null>(null);
+  const [branches, setBranches] = useState<string[]>([]);
+  const [baseBranch, setBaseBranch] = useState("");
+  const [branchesLoading, setBranchesLoading] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
   async function load() {
     if (!token || !workspaceId) {
@@ -113,7 +122,6 @@ export function RepositoriesPage() {
     setBusy("connect");
     setError(null);
     try {
-      // Auth'd prepare → one-time ticket URL (no Bearer needed on browser redirect)
       const data = await apiRequest<{ startPath: string }>("/api/integrations/github/prepare", {
         method: "POST",
         token,
@@ -158,11 +166,67 @@ export function RepositoriesPage() {
     }
   }
 
-  async function syncRepo(id: string) {
+  async function openSyncModal(repo: Repository) {
     if (!token) return;
-    setBusy(id);
+    setSyncRepoTarget(repo);
+    setBranchesLoading(true);
+    setError(null);
+    setBaseBranch(repo.syncBaseBranch || repo.defaultBranch || "");
     try {
-      await apiRequest(`/api/repositories/${id}/sync`, { method: "POST", token });
+      const data = await apiRequest<{
+        branches: string[];
+        defaultBranch: string | null;
+        syncBaseBranch: string | null;
+      }>(`/api/repositories/${repo.id}/branches`, { token });
+      setBranches(data.branches ?? []);
+      setBaseBranch(data.syncBaseBranch || data.defaultBranch || "");
+    } catch (err) {
+      setBranches([]);
+      setError(err instanceof Error ? err.message : "Could not load branches");
+    } finally {
+      setBranchesLoading(false);
+    }
+  }
+
+  async function confirmSync() {
+    if (!token || !syncRepoTarget) return;
+    const id = syncRepoTarget.id;
+    const repoName = syncRepoTarget.fullName;
+    setBusy(id);
+    setError(null);
+    setSyncMsg(null);
+    try {
+      const result = await apiRequest<{
+        synced: number;
+        workflowRuns: number;
+        baseBranch: string | null;
+        scanned?: number;
+        commonBases?: Array<{ name: string; count: number }>;
+      }>(`/api/repositories/${id}/sync`, {
+        method: "POST",
+        token,
+        body: { baseBranch: baseBranch || null },
+      });
+      setSyncRepoTarget(null);
+
+      const baseLabel = result.baseBranch ? `base “${result.baseBranch}”` : "all bases";
+      if (result.synced === 0 && (result.scanned ?? 0) > 0 && result.commonBases?.length) {
+        const hint = result.commonBases
+          .slice(0, 3)
+          .map((b) => `${b.name} (${b.count})`)
+          .join(", ");
+        setSyncMsg(
+          `${repoName}: 0 PRs for ${baseLabel}, but GitHub has ${result.scanned} PR(s) targeting other bases — try: ${hint}. Actions: ${result.workflowRuns}.`,
+        );
+      } else if (result.synced === 0 && result.workflowRuns === 0) {
+        setSyncMsg(
+          `${repoName}: no PRs or Actions runs found for ${baseLabel}. If this repo has no PRs on GitHub yet, that is expected.`,
+        );
+      } else {
+        setSyncMsg(
+          `${repoName}: imported ${result.synced} PR(s) and ${result.workflowRuns} Actions run(s) (${baseLabel}).`,
+        );
+      }
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sync failed");
@@ -204,6 +268,8 @@ export function RepositoriesPage() {
 
       <div className="hint-strip">
         <strong>Safe sync:</strong> DevFlow only reads PRs from GitHub — it does not change your repos.
+        On sync you choose which <strong>base branch</strong> PRs must target (e.g.{" "}
+        <code>develop</code>), not every feature branch.
       </div>
 
       {params.get("connected") ? (
@@ -212,6 +278,7 @@ export function RepositoriesPage() {
         </p>
       ) : null}
       {error ? <p className="error">{error}</p> : null}
+      {syncMsg ? <p className="muted sync-result">{syncMsg}</p> : null}
       {loading ? <p className="muted">Loading…</p> : null}
 
       {!loading && status && !status.configured ? (
@@ -260,6 +327,11 @@ export function RepositoriesPage() {
                   <strong>{repo.fullName}</strong>
                   <span className="muted block">
                     {repo.syncStatus}
+                    {repo.syncBaseBranch
+                      ? ` · base ${repo.syncBaseBranch}`
+                      : repo.defaultBranch
+                        ? ` · default ${repo.defaultBranch}`
+                        : ""}
                     {repo.lastSyncedAt
                       ? ` · synced ${new Date(repo.lastSyncedAt).toLocaleString()}`
                       : ""}
@@ -278,9 +350,9 @@ export function RepositoriesPage() {
                   type="button"
                   className="ghost btn-sm"
                   disabled={busy === repo.id}
-                  onClick={() => void syncRepo(repo.id)}
+                  onClick={() => void openSyncModal(repo)}
                 >
-                  {busy === repo.id ? "Syncing…" : "Sync now"}
+                  {busy === repo.id ? "Syncing…" : "Sync…"}
                 </button>
               </li>
             ))}
@@ -306,6 +378,7 @@ export function RepositoriesPage() {
                       <strong>{repo.fullName}</strong>
                       <span className="muted block">
                         {repo.private ? "Private" : "Public"}
+                        {repo.defaultBranch ? ` · default ${repo.defaultBranch}` : ""}
                         {repo.description ? ` · ${repo.description}` : ""}
                       </span>
                     </span>
@@ -323,6 +396,61 @@ export function RepositoriesPage() {
           )}
         </section>
       ) : null}
+
+      <Modal
+        open={Boolean(syncRepoTarget)}
+        title="Sync repository"
+        description={
+          syncRepoTarget
+            ? `Choose which base branch to import for ${syncRepoTarget.fullName}. Feature branches are not selected — only PRs that target this branch.`
+            : undefined
+        }
+        onClose={() => {
+          if (busy) return;
+          setSyncRepoTarget(null);
+        }}
+      >
+        <div className="stack">
+          {branchesLoading ? <p className="muted small">Loading branches from GitHub…</p> : null}
+          <label>
+            Base branch (PR target)
+            <select
+              value={baseBranch}
+              onChange={(e) => setBaseBranch(e.target.value)}
+              disabled={branchesLoading || busy === syncRepoTarget?.id}
+            >
+              <option value="">All base branches</option>
+              {branches.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                  {syncRepoTarget?.defaultBranch === name ? " (GitHub default)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="muted small">
+            Example: pick <code>develop</code> if your team merges there instead of{" "}
+            <code>main</code>. Choice is remembered for the next sync.
+          </p>
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="ghost"
+              disabled={Boolean(busy)}
+              onClick={() => setSyncRepoTarget(null)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={branchesLoading || busy === syncRepoTarget?.id}
+              onClick={() => void confirmSync()}
+            >
+              {busy === syncRepoTarget?.id ? "Syncing…" : "Sync now"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
