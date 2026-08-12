@@ -117,9 +117,10 @@ export function PullRequestDetailPage() {
         </section>
         <div className="stack">
           <AiPanel
-            title="AI summary"
+            title="AI for this PR"
             summarizePath={`/api/ai/summarize/pull-requests/${pr.id}`}
-            askHint="What does this PR change? Review focus + linked issue."
+            reviewPath={`/api/ai/review/pull-requests/${pr.id}`}
+            askHint="Summarize the change, or get a review checklist and suggested comment."
           />
           <section className="panel">
             <h2>Details</h2>

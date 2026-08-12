@@ -229,8 +229,17 @@ label {
   gap: 0.35rem;
   min-height: 0;
   flex: 1;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding-right: 0.1rem;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge */
+}
+.sidebar-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none; /* Chrome / Safari */
 }
 .sidebar-brand {
   padding: 0.05rem 0.3rem 0;
@@ -1042,6 +1051,69 @@ textarea { resize: vertical; min-height: 72px; }
 .analytics-window {
   font-size: 0.75rem;
   font-weight: 650;
+}
+.analytics-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin: 0.65rem 0 0.35rem;
+}
+.analytics-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: var(--text-xs);
+  font-weight: 650;
+  color: var(--muted);
+}
+.analytics-filters select {
+  min-width: 10rem;
+}
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.spark-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.35rem;
+  min-height: 7.5rem;
+  overflow-x: auto;
+  padding: 0.35rem 0 0.15rem;
+}
+.spark-col {
+  flex: 1 0 1.6rem;
+  min-width: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+.spark-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 5.5rem;
+  width: 100%;
+  justify-content: center;
+}
+.spark-bar {
+  width: 0.35rem;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--border);
+}
+.spark-bar.done { background: var(--ok, #2f9e76); }
+.spark-bar.merged { background: var(--accent, #2b6cb0); }
+.spark-label {
+  font-size: 0.62rem;
+  color: var(--muted);
+  white-space: nowrap;
+  transform: rotate(-35deg);
+  transform-origin: top center;
+  margin-top: 0.35rem;
 }
 .analytics-empty-actions {
   justify-content: center;

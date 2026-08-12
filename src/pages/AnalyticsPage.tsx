@@ -8,6 +8,7 @@ type OutletCtx = { workspaceId?: string };
 
 type AnalyticsPayload = {
   window: { from: string; to: string };
+  filters?: { projectId: string | null };
   summary: {
     projects: number;
     members: number;
@@ -21,6 +22,9 @@ type AnalyticsPayload = {
     prsMergedInWindow: number;
     cyclesActive: number;
     cyclesAtRisk: number;
+  };
+  series?: {
+    byDay: Array<{ date: string; done: number; merged: number }>;
   };
   issuesByStatus: Record<string, number>;
   issuesByPriority: Record<string, number>;
@@ -84,6 +88,27 @@ export function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [days, setDays] = useState<7 | 14 | 30>(14);
+  const [projectId, setProjectId] = useState("");
+  const [projectOptions, setProjectOptions] = useState<Array<{ id: string; key: string; name: string }>>(
+    [],
+  );
+
+  useEffect(() => {
+    async function loadProjects() {
+      if (!token || !workspaceId) return;
+      try {
+        const res = await apiRequest<{ projects: Array<{ id: string; key: string; name: string }> }>(
+          `/api/workspaces/${workspaceId}/projects`,
+          { token },
+        );
+        setProjectOptions(res.projects ?? []);
+      } catch {
+        /* keep empty */
+      }
+    }
+    void loadProjects();
+  }, [token, workspaceId]);
 
   useEffect(() => {
     async function load() {
@@ -94,8 +119,15 @@ export function AnalyticsPage() {
       setLoading(true);
       setError(null);
       try {
+        const to = new Date();
+        const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
+        const params = new URLSearchParams({
+          from: from.toISOString(),
+          to: to.toISOString(),
+        });
+        if (projectId) params.set("projectId", projectId);
         const payload = await apiRequest<AnalyticsPayload>(
-          `/api/workspaces/${workspaceId}/analytics`,
+          `/api/workspaces/${workspaceId}/analytics?${params}`,
           { token },
         );
         setData(payload);
@@ -106,7 +138,7 @@ export function AnalyticsPage() {
       }
     }
     void load();
-  }, [token, workspaceId]);
+  }, [token, workspaceId, days, projectId]);
 
   const statusTotal = useMemo(() => {
     if (!data) return 1;
@@ -127,6 +159,12 @@ export function AnalyticsPage() {
   const maxWip = useMemo(() => {
     if (!data?.assigneeWip.length) return 1;
     return Math.max(...data.assigneeWip.map((a) => a.openCount), 1);
+  }, [data]);
+
+  const seriesMax = useMemo(() => {
+    const rows = data?.series?.byDay ?? [];
+    if (!rows.length) return 1;
+    return Math.max(...rows.map((r) => Math.max(r.done, r.merged)), 1);
   }, [data]);
 
   if (!workspaceId) {
@@ -167,8 +205,33 @@ export function AnalyticsPage() {
         }
       />
 
+      <div className="filters-bar analytics-filters">
+        <label>
+          Range
+          <select
+            value={days}
+            onChange={(e) => setDays(Number(e.target.value) as 7 | 14 | 30)}
+          >
+            <option value={7}>Last 7 days</option>
+            <option value={14}>Last 14 days</option>
+            <option value={30}>Last 30 days</option>
+          </select>
+        </label>
+        <label>
+          Project
+          <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+            <option value="">All projects</option>
+            {projectOptions.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.key} — {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       <div className="hint-strip">
-        Throughput uses issues marked <strong>DONE</strong> in the last 14 days. Cycle risk =
+        Throughput uses issues marked <strong>DONE</strong> in the selected window. Cycle risk =
         active cycles past end date with unfinished work.
       </div>
 
@@ -218,6 +281,41 @@ export function AnalyticsPage() {
               </div>
             </div>
           </div>
+
+          {data.series?.byDay?.length ? (
+            <section className="panel" style={{ marginTop: "0.75rem" }}>
+              <div className="panel-head">
+                <h3>Throughput by day</h3>
+                <span className="muted small">Done issues · merged PRs</span>
+              </div>
+              <div className="spark-chart" role="img" aria-label="Daily throughput">
+                {data.series.byDay.map((day) => (
+                  <div
+                    key={day.date}
+                    className="spark-col"
+                    title={`${day.date}: ${day.done} done, ${day.merged} merged`}
+                  >
+                    <div className="spark-bars">
+                      <span
+                        className="spark-bar done"
+                        style={{ height: `${(day.done / seriesMax) * 100}%` }}
+                      />
+                      <span
+                        className="spark-bar merged"
+                        style={{ height: `${(day.merged / seriesMax) * 100}%` }}
+                      />
+                    </div>
+                    <span className="spark-label">
+                      {new Date(`${day.date}T12:00:00`).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <div className="analytics-grid">
             <article className="panel">

@@ -60,6 +60,14 @@ function IconRepos() {
   );
 }
 
+function IconActions() {
+  return (
+    <svg {...iconProps}>
+      <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function IconPr() {
   return (
     <svg {...iconProps}>
@@ -181,6 +189,12 @@ const SHIP: NavItem[] = [
     hint: "GitHub links",
     icon: <IconRepos />,
     countKey: "repos",
+  },
+  {
+    to: "/app/actions",
+    label: "Actions",
+    hint: "CI status",
+    icon: <IconActions />,
   },
   {
     to: "/app/pull-requests",

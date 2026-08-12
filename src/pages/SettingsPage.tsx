@@ -38,6 +38,8 @@ export function SettingsPage() {
   const [logs, setLogs] = useState<AuditEntry[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("MEMBER");
+  const [slackUrl, setSlackUrl] = useState("");
+  const [slackConfigured, setSlackConfigured] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,11 +60,18 @@ export function SettingsPage() {
       setMembers(membersRes.members ?? []);
 
       if (canAdmin) {
-        const logsRes = await apiRequest<{ logs: AuditEntry[] }>(
-          `/api/workspaces/${workspaceId}/audit-logs?limit=40`,
-          { token },
-        );
+        const [logsRes, wsRes] = await Promise.all([
+          apiRequest<{ logs: AuditEntry[] }>(
+            `/api/workspaces/${workspaceId}/audit-logs?limit=40`,
+            { token },
+          ),
+          apiRequest<{ workspace: { slackConfigured?: boolean } }>(
+            `/api/workspaces/${workspaceId}`,
+            { token },
+          ),
+        ]);
         setLogs(logsRes.logs ?? []);
+        setSlackConfigured(Boolean(wsRes.workspace?.slackConfigured));
       } else {
         setLogs([]);
       }
@@ -97,6 +106,35 @@ export function SettingsPage() {
       await dispatch(fetchWorkspaces());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not rename");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function onSaveSlack(e: FormEvent) {
+    e.preventDefault();
+    if (!token || !workspaceId || !canAdmin) return;
+    setSaving(true);
+    setError(null);
+    setMsg(null);
+    try {
+      const res = await apiRequest<{ workspace: { slackConfigured?: boolean } }>(
+        `/api/workspaces/${workspaceId}`,
+        {
+          method: "PATCH",
+          token,
+          body: { slackWebhookUrl: slackUrl.trim() || null },
+        },
+      );
+      setSlackConfigured(Boolean(res.workspace?.slackConfigured));
+      setSlackUrl("");
+      setMsg(
+        res.workspace?.slackConfigured
+          ? "Slack webhook saved — workspace notifications will post to Slack"
+          : "Slack webhook cleared",
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save Slack webhook");
     } finally {
       setSaving(false);
     }
@@ -168,10 +206,15 @@ export function SettingsPage() {
       <PageHeader
         eyebrow="Workspace"
         title="Settings"
-        description="Rename the workspace, manage members, and review important activity."
+        description="Rename the workspace, connect Slack, manage members, and review activity."
         chips={[
           { label: "Members", value: members.length },
           { label: "Your role", value: role || "—", tone: "accent" },
+          {
+            label: "Slack",
+            value: slackConfigured ? "On" : "Off",
+            tone: slackConfigured ? "ok" : "default",
+          },
         ]}
       />
 
@@ -202,6 +245,70 @@ export function SettingsPage() {
               </p>
               <p className="muted small">Only owners and admins can rename this workspace.</p>
             </div>
+          )}
+        </article>
+
+        <article className="panel">
+          <div className="panel-head">
+            <h3>Slack notifications</h3>
+          </div>
+          {canAdmin ? (
+            <form className="stack" onSubmit={onSaveSlack}>
+              <p className="muted small">
+                Paste an Incoming Webhook URL. Workspace events (sync, issues, CI failures) will
+                mirror to Slack. Status:{" "}
+                <strong>{slackConfigured ? "connected" : "not set"}</strong>
+              </p>
+              <label>
+                Webhook URL
+                <input
+                  type="url"
+                  value={slackUrl}
+                  onChange={(e) => setSlackUrl(e.target.value)}
+                  placeholder={
+                    slackConfigured
+                      ? "Enter a new URL to replace, or leave blank and clear"
+                      : "https://hooks.slack.com/services/…"
+                  }
+                />
+              </label>
+              <div className="row-actions">
+                <button type="submit" disabled={saving || !slackUrl.trim()}>
+                  {saving ? "Saving…" : "Save webhook"}
+                </button>
+                {slackConfigured ? (
+                  <button
+                    type="button"
+                    className="ghost"
+                    disabled={saving}
+                    onClick={() => {
+                      setSlackUrl("");
+                      void (async () => {
+                        if (!token || !workspaceId) return;
+                        setSaving(true);
+                        try {
+                          await apiRequest(`/api/workspaces/${workspaceId}`, {
+                            method: "PATCH",
+                            token,
+                            body: { slackWebhookUrl: null },
+                          });
+                          setSlackConfigured(false);
+                          setMsg("Slack webhook cleared");
+                        } catch (err) {
+                          setError(err instanceof Error ? err.message : "Clear failed");
+                        } finally {
+                          setSaving(false);
+                        }
+                      })();
+                    }}
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+            </form>
+          ) : (
+            <p className="muted small">Only owners and admins can configure Slack.</p>
           )}
         </article>
 
